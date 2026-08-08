@@ -119,16 +119,16 @@
       // Clear existing QR code canvas/image
       qrcodeContainer.innerHTML = '';
 
-      // FORCE THE LIVE HOST DOMAIN DYNAMICALLY
-      const publicBaseUrl = window.location.origin;
-      const mallIdParam = typeof currentMallId !== 'undefined' ? currentMallId : 'mall1';
-      
-      // Force clean Customer URL (ignoring any saved localtunnel data)
-      let customerUrl = `${publicBaseUrl}/index.html?mallId=${mallIdParam}`;
+      // HARDCODE THE DOMAIN TO THE CURRENT LIVE ORIGIN
+      const liveDomain = window.location.origin;
+      const mallIdParam = (typeof currentMallId !== 'undefined' && currentMallId) ? currentMallId : 'mall1';
 
-      // Overwrite any old saved localtunnel strings in mallData state
+      // Construct clean customer URL
+      const customerUrl = `${liveDomain}/index.html?mallId=${mallIdParam}`;
+
+      // Force-sanitize global state if present
       if (typeof mallData !== 'undefined' && mallData) {
-        mallData.baseUrl = publicBaseUrl;
+        mallData.baseUrl = liveDomain;
       }
 
       // Generate clean QR code
