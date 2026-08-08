@@ -120,7 +120,8 @@
       qrcodeContainer.innerHTML = '';
 
       // PUBLIC LOCALTUNNEL BASE URL
-      const publicBaseUrl = "https://smartly-parked.onrender.com";
+      const publicBaseUrl = window.location.origin;
+      
       const mallIdParam = typeof currentMallId !== 'undefined' ? currentMallId : 'mall1';
       
       // Full customer portal link
