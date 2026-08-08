@@ -10,6 +10,13 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Helper to reliably construct live protocol + domain
+function getLiveDomain(req) {
+  const host = req.get('host') || `localhost:${PORT}`;
+  const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+  return `${protocol}://${host}`;
+}
+
 // In-memory data store for malls to keep laptop and phone in sync
 let globalMalls = {
   mall1: {
@@ -36,6 +43,8 @@ let globalMalls = {
 // GET Mall Data (Used by both Owner Panel and Customer Phone App)
 app.get('/api/mall/:id', (req, res) => {
   const mallId = req.params.id;
+  const currentDomain = getLiveDomain(req);
+
   if (!globalMalls[mallId]) {
     // Default structure for new malls
     globalMalls[mallId] = {
@@ -47,15 +56,23 @@ app.get('/api/mall/:id', (req, res) => {
       ]
     };
   }
+
+  // FORCE DYNAMIC DOMAIN OVERRIDE (SCRUBS LOCALTUNNEL COMPLETELY)
+  globalMalls[mallId].baseUrl = currentDomain;
+
   res.json(globalMalls[mallId]);
 });
 
 // POST Update Mall Data (Triggered whenever owner adds/deletes slots or changes status)
 app.post('/api/mall/:id', (req, res) => {
   const mallId = req.params.id;
+  const currentDomain = getLiveDomain(req);
+
   if (req.body && req.body.slots) {
     globalMalls[mallId] = req.body;
-    return res.json({ success: true, message: "Mall configuration updated." });
+    // Overwrite any incoming saved localtunnel URL with current host
+    globalMalls[mallId].baseUrl = currentDomain;
+    return res.json({ success: true, message: "Mall configuration updated.", baseUrl: currentDomain });
   }
   res.status(400).json({ error: "Invalid mall payload provided." });
 });
