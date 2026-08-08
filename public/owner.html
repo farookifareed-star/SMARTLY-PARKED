@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mall Owner Management Panel</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; }
+    .panel-container { max-width: 900px; margin: 0 auto; background: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #334155; }
+    h1 { color: #38bdf8; text-align: center; margin-bottom: 5px; }
+    p.subtitle { text-align: center; color: #94a3b8; margin-bottom: 25px; }
+    
+    .card { background: #0f172a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #334155; }
+    .card h3 { margin-top: 0; color: #f8fafc; font-size: 1.1rem; }
+    
+    .form-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    input, select, button { padding: 10px 14px; border-radius: 6px; border: 1px solid #475569; font-size: 0.95rem; background: #1e293b; color: #fff; }
+    button { background: #0284c7; color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #0369a1; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 15px; }
+    .slot-card { background: #334155; padding: 12px; border-radius: 8px; text-align: center; }
+    .slot-card.available { border-top: 4px solid #10b981; }
+    .slot-card.occupied { border-top: 4px solid #ef4444; }
+    .slot-card.reserved { border-top: 4px solid #f59e0b; }
+
+    /* Printable QR Container Styling */
+    .qr-badge-container {
+      background: #ffffff;
+      color: #0f172a;
+      padding: 24px;
+      border-radius: 12px;
+      display: inline-block;
+      margin: 15px 0;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel-container">
+    <h1 id="ownerMallTitle">Smart Parking Mall — Owner Panel</h1>
+    <p class="subtitle">Edit Mall Settings, Floors & Live Slots</p>
+
+    <!-- 0. Mall Name Editor -->
+    <div class="card">
+      <h3>0. Edit Property/Mall Name</h3>
+      <div class="form-group">
+        <input type="text" id="mallNameInput" placeholder="Enter Mall Name">
+        <button onclick="updateMallName(document.getElementById('mallNameInput').value)">Save Mall Name</button>
+      </div>
+    </div>
+
+    <!-- Customer Entry QR Code Card -->
+    <div class="card" style="text-align: center;">
+      <h3>📱 Customer Entry QR Code Poster</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px;">
+        Print this QR code poster and place it at the parking gate entrance so arriving drivers can scan it.
+      </p>
+
+      <!-- Printable Poster Box -->
+      <div id="printArea" class="qr-badge-container">
+        <h2 id="qrMallTitle" style="margin: 0 0 10px 0; font-size: 1.3rem; color: #0f172a; font-weight: 700;">
+          Scan to View Parking Availability
+        </h2>
+        <div id="qrcode" style="display: flex; justify-content: center; margin: 12px 0;"></div>
+        <p style="font-size: 0.8rem; color: #475569; margin: 6px 0 0 0; font-weight: 600;">
+          Powered by Smart Mall Parking SaaS
+        </p>
+      </div>
+
+      <div>
+        <button onclick="printQRCode()" style="background: #10b981;">🖨️ Print QR Code Poster</button>
+      </div>
+    </div>
+
+    <!-- 1. Add/Remove Floor Location -->
+    <div class="card">
+      <h3>1. Manage Floor Locations</h3>
+      <div class="form-group">
+        <input type="text" id="newFloorInput" placeholder="e.g. Ground Floor, Basement 2">
+        <button onclick="addFloor(document.getElementById('newFloorInput').value)">Add Floor</button>
+        <button onclick="removeFloor(document.getElementById('floorSelect').value)" style="background:#ef4444;">Delete Selected Floor</button>
+      </div>
+    </div>
+
+    <!-- 2. Add Slot -->
+    <div class="card">
+      <h3>2. Add Slot to Location</h3>
+      <div class="form-group">
+        <select id="floorSelect">
+          <option value="all">All Locations</option>
+        </select>
+        <input type="text" id="slotIdInput" placeholder="Slot ID (e.g. G-5)">
+        <button onclick="addSlot(document.getElementById('floorSelect').value, document.getElementById('slotIdInput').value)">Add Slot</button>
+      </div>
+    </div>
+
+    <!-- 3. Live Parking Grid -->
+    <div class="card">
+      <h3>3. Live Parking Management Grid</h3>
+      <div id="parkingGrid" class="grid"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- QR Code & Print Handling Logic -->
+  <script>
+    function generateOwnerQRCode() {
+      const qrcodeContainer = document.getElementById('qrcode');
+      if (!qrcodeContainer) return;
+
+      // Clear existing QR code canvas/image
+      qrcodeContainer.innerHTML = '';
+
+      // PUBLIC LOCALTUNNEL BASE URL
+      const publicBaseUrl = "https://bumpy-forks-tap.loca.lt";
+      const mallIdParam = typeof currentMallId !== 'undefined' ? currentMallId : 'mall1';
+      
+      // Full customer portal link
+      const customerUrl = `${publicBaseUrl}/index.html?mallId=${mallIdParam}`;
+
+      // Generate clean QR code
+      new QRCode(qrcodeContainer, {
+        text: customerUrl,
+        width: 180,
+        height: 180,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      // Synchronize Mall Title onto the QR badge dynamically
+      const qrTitle = document.getElementById('qrMallTitle');
+      if (qrTitle && typeof mallData !== 'undefined' && mallData.name) {
+        qrTitle.innerText = `${mallData.name} — Scan to Park`;
+      }
+    }
+
+    function printQRCode() {
+      const printArea = document.getElementById('printArea');
+      if (!printArea) return;
+
+      const printContents = printArea.outerHTML;
+      const originalContents = document.body.innerHTML;
+
+      // Temporarily set body content to printable poster only
+      document.body.innerHTML = `
+        <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#ffffff;">
+          ${printContents}
+        </div>
+      `;
+
+      window.print();
+
+      // Restore full UI after printing
+      document.body.innerHTML = originalContents;
+      window.location.reload();
+    }
+
+    // Automatically trigger QR code generation on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(generateOwnerQRCode, 400);
+    });
+  </script>
+</body>
+</html>

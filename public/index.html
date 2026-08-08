@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Mall Parking Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #fff; margin:0; padding:20px; }
+    header { text-align: center; margin-bottom: 25px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px; }
+    select { padding: 8px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; }
+    .slot-card { background: #1e293b; border-radius: 10px; padding: 15px 10px; text-align: center; border: 1px solid #334155; }
+    .slot-card.available { border-bottom: 4px solid #10b981; }
+    .slot-card.occupied { border-bottom: 4px solid #ef4444; }
+    .slot-card.reserved { border-bottom: 4px solid #f59e0b; }
+
+    /* Modal Styles */
+    .modal { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal.hidden { display: none; }
+    .modal-card { background: #1e293b; padding: 25px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .modal-card input { width: 90%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+    .modal-actions button { padding: 8px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+    .btn-confirm { background: #10b981; color: white; }
+    .btn-cancel { background: #64748b; color: white; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 id="mallTitle">Smart Parking Portal</h1>
+    <p>Live Parking Availability, Reservations & Extensions</p>
+  </header>
+
+  <div class="container">
+    <div class="controls">
+      <label for="floorSelect">Select Location:</label>
+      <select id="floorSelect" onchange="renderUI()">
+        <option value="all">All Locations</option>
+      </select>
+    </div>
+
+    <!-- Live Parking Grid -->
+    <div id="parkingGrid" class="grid"></div>
+  </div>
+
+  <!-- Reservation / Extension Modal -->
+  <div id="bookingModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="modalSlotTitle">Reserve Slot</h3>
+      <input type="text" id="vehicleInput" placeholder="Vehicle Reg Number (e.g. KA-01-1234)">
+      <div class="modal-actions">
+        <button class="btn-confirm" onclick="confirmAction()">Confirm</button>
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- Complete Reservation Modal Helper Script -->
+  <script>
+    let activeSlotId = null;
+    let activeActionType = 'reserve'; // 'reserve' or 'extend'
+
+    function openBookingModal(slotId) {
+      activeSlotId = slotId;
+      activeActionType = 'reserve';
+      
+      const title = document.getElementById('modalSlotTitle');
+      const input = document.getElementById('vehicleInput');
+      const modal = document.getElementById('bookingModal');
+
+      if (title) title.innerText = `Reserve Slot ${slotId}`;
+      if (input) {
+        input.value = '';
+        input.placeholder = "Vehicle Reg Number (e.g. KA-01-1234)";
+        input.type = "text";
+      }
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function openExtendModal(slotId) {
+      activeSlotId = slotId;
+      activeActionType = 'extend';
+
+      const title = document.getElementById('modalSlotTitle');
+      const input = document.getElementById('vehicleInput');
+      const modal = document.getElementById('bookingModal');
+
+      if (title) title.innerText = `Extend Time for Slot ${slotId}`;
+      if (input) {
+        input.value = '1';
+        input.placeholder = "Hours to extend (e.g. 1, 2)";
+        input.type = "number";
+      }
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('bookingModal');
+      if (modal) modal.classList.add('hidden');
+      activeSlotId = null;
+    }
+
+    async function confirmAction() {
+      const inputVal = document.getElementById('vehicleInput')?.value.trim();
+
+      if (!inputVal) {
+        alert(activeActionType === 'reserve' ? 'Please enter a vehicle registration number' : 'Please enter extension hours');
+        return;
+      }
+
+      if (activeActionType === 'reserve') {
+        const slot = mallData.slots.find(s => s.id === activeSlotId);
+        if (slot) {
+          slot.status = 'reserved';
+          slot.vehicleNumber = inputVal;
+        }
+
+        try {
+          await fetch(`/api/mall/${currentMallId}/slot/reserve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: activeSlotId, vehicleNumber: inputVal })
+          });
+        } catch (err) {
+          console.error('Reservation API Error:', err);
+        }
+
+        alert(`Slot ${activeSlotId} successfully reserved!`);
+      } else {
+        const slot = mallData.slots.find(s => s.id === activeSlotId);
+        if (slot) {
+          slot.extendedHours = (slot.extendedHours || 0) + parseInt(inputVal);
+        }
+
+        try {
+          await fetch(`/api/mall/${currentMallId}/slot/extend`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: activeSlotId, durationHours: inputVal })
+          });
+        } catch (err) {
+          console.error('Extend API Error:', err);
+        }
+
+        alert(`Parking extended for ${inputVal} hour(s)!`);
+      }
+
+      saveMallData();
+      renderUI();
+      closeModal();
+    }
+  </script>
+</body>
+</html>

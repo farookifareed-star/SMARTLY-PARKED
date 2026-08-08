@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Platform Super Admin Control</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header style="background: #0f172a;">
+    <h1>Super Admin Dashboard</h1>
+    <p>Private SaaS Platform Control Panel</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h3>Onboard New Mall Owner (Buyer)</h3>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+        <input type="text" id="mId" placeholder="Unique Mall ID (e.g. grandmall)">
+        <input type="text" id="mName" placeholder="Mall Name (e.g. Grand City Mall)">
+        <input type="email" id="mEmail" placeholder="Owner Email">
+        <input type="number" id="mRate" placeholder="Hourly Rate ($/hr)">
+        <input type="text" id="mFloors" placeholder="Floors (comma separated: Ground Floor, Basement 1)">
+        <button onclick="registerBuyer()">Onboard Buyer</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Registered Mall Clients</h3>
+      <div id="clientsList"></div>
+    </div>
+  </div>
+
+  <script>
+    async function loadMalls() {
+      const res = await fetch('/api/superadmin/malls');
+      const data = await res.json();
+      let html = '<ul>';
+      data.malls.forEach(m => {
+        html += `<li style="margin-bottom:12px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
+          <b>${m.name}</b> (ID: <code>${m.id}</code>) — Rate: $${m.ratePerHour}/hr<br>
+          <small>Customer Link: <code>/index.html?mallId=${m.id}</code></small><br>
+          <small>Owner Control: <code>/owner.html?mallId=${m.id}</code></small>
+        </li>`;
+      });
+      html += '</ul>';
+      document.getElementById('clientsList').innerHTML = html;
+    }
+
+    async function registerBuyer() {
+      const id = document.getElementById('mId').value;
+      const name = document.getElementById('mName').value;
+      const ownerEmail = document.getElementById('mEmail').value;
+      const ratePerHour = document.getElementById('mRate').value;
+      const floors = document.getElementById('mFloors').value;
+
+      if (!id || !name) return alert('Enter Mall ID and Name.');
+
+      await fetch('/api/superadmin/add-mall', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id, name, ownerEmail, ratePerHour, floors })
+      });
+      alert('Buyer registered successfully!');
+      loadMalls();
+    }
+
+    loadMalls();
+  </script>
+</body>
+</html>
+
