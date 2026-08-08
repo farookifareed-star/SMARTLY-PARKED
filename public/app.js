@@ -35,6 +35,8 @@ async function loadMallData() {
 }
 
 async function saveMallData() {
+  if (typeof mallData !== 'undefined' && mallData) {
+    mallData.baseUrl = window.location.origin;  }
   localStorage.setItem(`parking_${currentMallId}`, JSON.stringify(mallData));
   try {
     await fetch(`/api/mall/${currentMallId}`, {
