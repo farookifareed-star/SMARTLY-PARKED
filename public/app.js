@@ -20,13 +20,16 @@ async function loadMallData() {
     const res = await fetch(`/api/mall/${currentMallId}`);
     if (res.ok) {
       mallData = await res.json();
+      mallData.baseUrl = window.location.origin;
     } else {
       const saved = localStorage.getItem(`parking_${currentMallId}`);
       if (saved) mallData = JSON.parse(saved);
+      if (mallData) mallData.baseUrl = window.location.origin;
     }
   } catch (err) {
     const saved = localStorage.getItem(`parking_${currentMallId}`);
     if (saved) mallData = JSON.parse(saved);
+    if (mallData) mallData.baseUrl = window.location.origin;
   }
   renderUI();
 }
