@@ -119,13 +119,17 @@
       // Clear existing QR code canvas/image
       qrcodeContainer.innerHTML = '';
 
-      // PUBLIC LOCALTUNNEL BASE URL
+      // FORCE THE LIVE HOST DOMAIN DYNAMICALLY
       const publicBaseUrl = window.location.origin;
-      
       const mallIdParam = typeof currentMallId !== 'undefined' ? currentMallId : 'mall1';
       
-      // Full customer portal link
-      const customerUrl = `${publicBaseUrl}/index.html?mallId=${mallIdParam}`;
+      // Force clean Customer URL (ignoring any saved localtunnel data)
+      let customerUrl = `${publicBaseUrl}/index.html?mallId=${mallIdParam}`;
+
+      // Overwrite any old saved localtunnel strings in mallData state
+      if (typeof mallData !== 'undefined' && mallData) {
+        mallData.baseUrl = publicBaseUrl;
+      }
 
       // Generate clean QR code
       new QRCode(qrcodeContainer, {
@@ -167,7 +171,7 @@
 
     // Automatically trigger QR code generation on page load
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(generateOwnerQRCode, 400);
+      setTimeout(generateOwnerQRCode, 500);
     });
   </script>
 </body>
